@@ -22,3 +22,18 @@ export type Finding = {
   sourceUrl: string;
   retrievedAt: string;
 };
+export type EvidenceItem = { claim: string; sourceUrl: string };
+
+export type ChallengeResult = {
+  initialImpact: Impact;
+  assumptions: string[];
+  queries: string[];
+  challengeSummary: string;
+  supportingEvidence: EvidenceItem[];
+  limitingEvidence: EvidenceItem[];
+  finalImpact: Impact;
+  finalConfidence: Confidence;
+  whyVerdict: string;
+  finalAction: string;
+  challengedAt: string;
+};

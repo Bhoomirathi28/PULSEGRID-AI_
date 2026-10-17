@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { Finding } from "@/lib/types";
+import FindingCard from "./FindingCard";
 
 type ScanResponse = {
   scannedAt: string;
@@ -9,14 +10,6 @@ type ScanResponse = {
   findings: Finding[];
   errors: string[];
   error?: string;
-};
-
-const impactColor: Record<string, string> = {
-  CRITICAL: "bg-red-600 text-white",
-  HIGH: "bg-orange-500 text-slate-950",
-  MEDIUM: "bg-yellow-400 text-slate-950",
-  LOW: "bg-sky-400 text-slate-950",
-  INFORMATIONAL: "bg-slate-600 text-white",
 };
 
 export default function StackBuilder() {
@@ -51,7 +44,9 @@ export default function StackBuilder() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ technologies }),
       });
-      const data: ScanResponse = await res.json();
+      const raw = await res.text();
+      if (!raw) throw new Error(`Empty response (status ${res.status})`);
+      const data: ScanResponse = JSON.parse(raw);
       if (!res.ok) throw new Error(data.error ?? "Scan failed");
       setResult(data);
     } catch (e) {
@@ -144,58 +139,7 @@ export default function StackBuilder() {
 
           <div className="mt-4 space-y-4">
             {result.findings.map((f, i) => (
-              <div
-                key={i}
-                className="rounded-lg border border-slate-800 bg-slate-900 p-6"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="text-xs text-slate-400">
-                      {f.technology} · {f.changeType}
-                    </p>
-                    <h3 className="mt-1 text-lg font-medium">{f.title}</h3>
-                  </div>
-                  <span
-                    className={`shrink-0 rounded px-2 py-1 text-xs font-semibold ${impactColor[f.impact]}`}
-                  >
-                    {f.impact} IMPACT
-                  </span>
-                </div>
-
-                <dl className="mt-4 space-y-3 text-sm">
-                  <div>
-                    <dt className="text-xs font-semibold text-emerald-400">FACT</dt>
-                    <dd className="text-slate-300">{f.fact}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs font-semibold text-sky-400">INFERENCE</dt>
-                    <dd className="text-slate-300">{f.inference}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs font-semibold text-yellow-400">UNKNOWN</dt>
-                    <dd className="text-slate-300">{f.unknown}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs font-semibold text-slate-400">
-                      RECOMMENDED ACTION
-                    </dt>
-                    <dd className="text-slate-300">{f.recommendedAction}</dd>
-                  </div>
-                </dl>
-
-                <p className="mt-4 text-xs text-slate-500">
-                  Confidence: {f.confidence} · Source:{" "}
-                  <a
-                    href={f.sourceUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-emerald-400 underline"
-                  >
-                    {f.sourceUrl}
-                  </a>{" "}
-                  · Retrieved {new Date(f.retrievedAt).toLocaleString()}
-                </p>
-              </div>
+              <FindingCard key={i} finding={f} stack={result.technologies} />
             ))}
           </div>
         </div>
