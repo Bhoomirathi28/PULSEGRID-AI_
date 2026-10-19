@@ -1,8 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import type { Finding } from "@/lib/types";
+import type { Diff, Finding } from "@/lib/types";
+import { loadSnapshot, saveSnapshot } from "@/lib/storage";
+import { diffSnapshots } from "@/lib/diff";
 import FindingCard from "./FindingCard";
+import ScanSummary from "./ScanSummary";
 
 type ScanResponse = {
   scannedAt: string;
@@ -17,6 +20,7 @@ export default function StackBuilder() {
   const [input, setInput] = useState("");
   const [scanning, setScanning] = useState(false);
   const [result, setResult] = useState<ScanResponse | null>(null);
+  const [diff, setDiff] = useState<Diff | null>(null);
   const [error, setError] = useState("");
 
   function addTechnology(e: React.FormEvent) {
@@ -38,6 +42,7 @@ export default function StackBuilder() {
     setScanning(true);
     setError("");
     setResult(null);
+    setDiff(null);
     try {
       const res = await fetch("/api/scan", {
         method: "POST",
@@ -49,6 +54,17 @@ export default function StackBuilder() {
       const data: ScanResponse = JSON.parse(raw);
       if (!res.ok) throw new Error(data.error ?? "Scan failed");
       setResult(data);
+
+      // Only compare and save a baseline when the scan fully succeeded
+      if (data.errors.length === 0) {
+        const snapshot = {
+          scannedAt: data.scannedAt,
+          technologies: data.technologies,
+          findings: data.findings,
+        };
+        setDiff(diffSnapshots(loadSnapshot(), snapshot));
+        saveSnapshot(snapshot);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Scan failed");
     } finally {
@@ -105,7 +121,11 @@ export default function StackBuilder() {
           disabled={technologies.length === 0 || scanning}
           className="mt-6 w-full rounded-md bg-emerald-500 px-4 py-3 text-sm font-semibold text-slate-950 hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-40"
         >
-          {scanning ? "Investigating live web sources..." : "SCAN MY STACK"}
+          {scanning
+            ? "Investigating live web sources..."
+            : result
+              ? "SCAN AGAIN"
+              : "SCAN MY STACK"}
         </button>
       </div>
 
@@ -117,14 +137,18 @@ export default function StackBuilder() {
 
       {result && (
         <div className="mt-8">
-          <div className="rounded-lg border border-slate-800 bg-slate-900 p-4 text-sm text-slate-300">
-            {result.technologies.length} technologies scanned ·{" "}
-            {result.findings.length} changes detected · scanned at{" "}
-            {new Date(result.scannedAt).toLocaleString()}
-          </div>
+          <ScanSummary
+            technologies={result.technologies}
+            findings={result.findings}
+            scannedAt={result.scannedAt}
+            diff={diff}
+          />
 
           {result.errors.length > 0 && (
             <div className="mt-4 rounded-md border border-yellow-800 bg-yellow-950 p-4 text-sm text-yellow-200">
+              <p className="mb-1 font-semibold">
+                Scan incomplete, so no baseline was saved:
+              </p>
               {result.errors.map((e) => (
                 <p key={e}>{e}</p>
               ))}

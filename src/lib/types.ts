@@ -37,3 +37,16 @@ export type ChallengeResult = {
   finalAction: string;
   challengedAt: string;
 };
+export type Snapshot = {
+  scannedAt: string;
+  technologies: string[];
+  findings: Finding[];
+};
+
+export type Diff = {
+  isFirstScan: boolean;
+  previousScannedAt?: string;
+  newFindings: Finding[];
+  changed: { finding: Finding; previousImpact: Impact }[];
+  removed: Finding[];
+};
